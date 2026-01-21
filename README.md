@@ -19,13 +19,28 @@ A browser extension that monitors and verifies your public IP addresses (both IP
 
 ## Installation
 
-### For Chrome/Edge:
+### Option 1: From Microsoft Edge Add-ons Store (Recommended)
 
-1. Open Chrome/Edge and navigate to `chrome://extensions/` (or `edge://extensions/`)
-2. Enable "Developer mode" (toggle in top right corner)
-3. Click "Load unpacked"
-4. Select the `ip-guard-extension` folder
-5. The extension icon will appear in your browser toolbar
+🚀 **Coming soon!** Currently under review by Microsoft.
+
+Once approved, you can install with one click from:
+- **Edge Store**: Search for "IP Guard" at https://microsoftedge.microsoft.com/addons/
+
+### Option 2: Install from Source (For Developers/Testers)
+
+1. **Download**: 
+   - Go to https://github.com/yaojeffrey/ipGuard
+   - Click green "Code" button → "Download ZIP"
+   - Extract to a folder
+
+2. **Load in Browser**:
+   - **Edge**: Go to `edge://extensions/`, enable "Developer mode" (bottom-left), click "Load unpacked"
+   - **Chrome**: Go to `chrome://extensions/`, enable "Developer mode" (top-right), click "Load unpacked"
+   - Select the extracted folder
+
+3. **Done**: Extension icon appears in toolbar
+
+⚠️ **Note**: Manual installation requires Developer mode and won't auto-update. See [INSTALL_FROM_SOURCE.md](INSTALL_FROM_SOURCE.md) for details.
 
 ## Usage
 
