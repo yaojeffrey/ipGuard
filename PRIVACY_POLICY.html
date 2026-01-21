@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - IP Guard Extension</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 50px;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 36px;
+      text-align: center;
+    }
+    .subtitle {
+      text-align: center;
+      color: #7f8c8d;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+    h2 {
+      color: #2c3e50;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+    h3 {
+      color: #34495e;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+    .highlight {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    .warning {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    ul, ol {
+      margin-left: 30px;
+      margin-bottom: 15px;
+    }
+    li {
+      margin: 8px 0;
+    }
+    .summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 10px;
+      margin: 40px 0;
+      text-align: center;
+    }
+    .summary h3 {
+      color: white;
+      border: none;
+      margin: 0 0 20px 0;
+      font-size: 24px;
+    }
+    .checkmark {
+      color: #4caf50;
+      font-weight: bold;
+    }
+    .crossmark {
+      color: #e74c3c;
+      font-weight: bold;
+    }
+    .last-updated {
+      text-align: center;
+      color: #95a5a6;
+      font-style: italic;
+      margin-bottom: 30px;
+    }
+    a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🛡️ Privacy Policy</h1>
+    <div class="subtitle">IP Guard Extension</div>
+    <div class="last-updated">Last Updated: January 21, 2026</div>
+
+    <div class="summary">
+      <h3>Privacy in Plain English</h3>
+      <p style="font-size: 20px; line-height: 1.8;">
+        <span class="checkmark" style="color: #2ecc71;">✅</span> We don't collect anything<br>
+        <span class="checkmark" style="color: #2ecc71;">✅</span> We don't track you<br>
+        <span class="checkmark" style="color: #2ecc71;">✅</span> Everything stays on your device<br>
+        <span class="checkmark" style="color: #2ecc71;">✅</span> No servers, no databases, no accounts
+      </p>
+    </div>
+
+    <h2>Introduction</h2>
+    <p>IP Guard ("the Extension") is committed to protecting your privacy. This Privacy Policy explains how we handle information when you use our browser extension.</p>
+
+    <h2>Information Collection and Use</h2>
+
+    <h3>What We DO NOT Collect</h3>
+    <div class="highlight">
+      <p>IP Guard does <strong>NOT</strong> collect, store, transmit, or share any of the following:</p>
+      <ul>
+        <li><span class="crossmark">❌</span> Personal information</li>
+        <li><span class="crossmark">❌</span> Browsing history</li>
+        <li><span class="crossmark">❌</span> Email addresses</li>
+        <li><span class="crossmark">❌</span> User accounts or profiles</li>
+        <li><span class="crossmark">❌</span> Analytics or tracking data</li>
+        <li><span class="crossmark">❌</span> IP addresses or network information</li>
+        <li><span class="crossmark">❌</span> Cookies or tracking identifiers</li>
+        <li><span class="crossmark">❌</span> Usage statistics</li>
+        <li><span class="crossmark">❌</span> Crash reports</li>
+      </ul>
+    </div>
+
+    <h3>What Data is Stored Locally</h3>
+    <p>The Extension stores the following information <strong>locally on your device only</strong>:</p>
+    <ul>
+      <li><span class="checkmark">✅</span> <strong>Target IP Configuration</strong> - The IP addresses, CIDR ranges, or IP ranges you configure as targets</li>
+      <li><span class="checkmark">✅</span> <strong>API Preference</strong> - Your selected IP detection API choice</li>
+      <li><span class="checkmark">✅</span> <strong>Check Interval</strong> - Your configured automatic check frequency</li>
+      <li><span class="checkmark">✅</span> <strong>Last Check Timestamp</strong> - When the extension last checked your IP</li>
+      <li><span class="checkmark">✅</span> <strong>Last Detected IPs</strong> - Your most recently detected IPv4/IPv6 addresses (for display purposes only)</li>
+    </ul>
+    
+    <div class="warning">
+      <p><strong>Important:</strong> All this data is stored using Chrome's local storage API and <strong>never leaves your device</strong>. It is not transmitted to any server, analytics service, or third party.</p>
+    </div>
+
+    <h2>External Services</h2>
+
+    <h3>IP Detection APIs</h3>
+    <p>To detect your public IP address, the Extension makes requests to third-party IP detection services. You can choose which service to use:</p>
+    <ul>
+      <li>ipify.org</li>
+      <li>Cloudflare (1.1.1.1)</li>
+      <li>AWS CheckIP (checkip.amazonaws.com)</li>
+      <li>ipinfo.io</li>
+      <li>ipapi.co</li>
+      <li>icanhazip.com</li>
+      <li>api.my-ip.io</li>
+      <li>api64.ipify.org (for IPv6)</li>
+    </ul>
+
+    <p><strong>What these services see:</strong></p>
+    <ul>
+      <li>Your public IP address (this is the purpose of the service)</li>
+      <li>Standard HTTP request headers</li>
+    </ul>
+
+    <p><strong>What we send:</strong> Only standard HTTP requests. No personal information, tracking data, or identifiers.</p>
+
+    <h2>Permissions</h2>
+    <p>The Extension requires the following permissions:</p>
+
+    <h3>Storage Permission</h3>
+    <p><strong>Purpose:</strong> To save your configuration (target IPs, preferences) locally on your device.</p>
+    <p><strong>Data Access:</strong> Only data you explicitly configure in the extension.</p>
+
+    <h3>Alarms Permission</h3>
+    <p><strong>Purpose:</strong> To schedule automatic IP checks at your configured interval.</p>
+    <p><strong>Data Access:</strong> No data access, only timing functionality.</p>
+
+    <h3>Host Permissions</h3>
+    <p><strong>Purpose:</strong> To contact IP detection APIs to retrieve your public IP address.</p>
+    <p><strong>Hosts:</strong> Limited to the specific IP detection services listed above.</p>
+
+    <h2>Data Sharing</h2>
+    <p>We do <strong>NOT</strong> share, sell, trade, or transfer any information to third parties.</p>
+    <p>The Extension operates entirely locally. Your configuration never leaves your device except for the necessary requests to IP detection APIs (which only see your public IP address, not your configuration).</p>
+
+    <h2>Data Security</h2>
+    <ul>
+      <li>All configuration is stored locally using Chrome's secure storage API</li>
+      <li>No server-side storage or databases</li>
+      <li>No user accounts or authentication</li>
+      <li>No network transmission of personal data</li>
+      <li>Open source code available for security auditing</li>
+    </ul>
+
+    <h2>Children's Privacy</h2>
+    <p>IP Guard does not knowingly collect information from anyone, including children under 13. The Extension does not collect any personal information whatsoever.</p>
+
+    <h2>Changes to This Privacy Policy</h2>
+    <p>We may update this Privacy Policy from time to time. Any changes will be posted in the Extension's store listing and updated here with a new "Last Updated" date.</p>
+
+    <h2>Your Rights</h2>
+    <p>Since we don't collect any personal data:</p>
+    <ul>
+      <li>There is no data to access, export, or delete from our servers (we have none)</li>
+      <li>All your data is already in your control (stored locally in your browser)</li>
+      <li>You can uninstall the Extension at any time, which removes all local data</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>If you have questions about this Privacy Policy, please open an issue on our <a href="https://github.com/[YOUR-USERNAME]/ip-guard-extension/issues" target="_blank">GitHub repository</a>.</p>
+
+    <h2>Compliance</h2>
+    <p>This Privacy Policy complies with:</p>
+    <ul>
+      <li>Microsoft Edge Add-ons Store policies</li>
+      <li>Chrome Web Store policies</li>
+      <li>General Data Protection Regulation (GDPR) principles</li>
+      <li>California Consumer Privacy Act (CCPA) principles</li>
+    </ul>
+
+    <div class="summary">
+      <h3>Summary</h3>
+      <p style="font-size: 18px;">
+        Your privacy is fully protected. We don't collect anything, we don't track you, 
+        and everything stays on your device. That's it.
+      </p>
+    </div>
+
+    <hr style="margin: 40px 0; border: none; border-top: 1px solid #ddd;">
+    
+    <div style="text-align: center; color: #7f8c8d; font-size: 14px;">
+      <p><strong>IP Guard - Network IP Verification & Leak Detection</strong></p>
+      <p>Version 1.0.0 | Effective Date: January 21, 2026</p>
+    </div>
+  </div>
+</body>
+</html>

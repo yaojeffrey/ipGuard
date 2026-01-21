@@ -1,0 +1,45 @@
+# Git ignore file for IP Guard Extension
+
+# Development and testing files
+*.ps1
+debug-*.html
+verify-*.html
+quick-*.html
+generate-*.html
+screenshot-helper.html
+
+# Publishing documentation (not needed in repo)
+STORE_LISTING.md
+PUBLISHING_CHECKLIST.md
+SCREENSHOT_GUIDE.md
+GITHUB_SETUP.md
+
+# Store assets (keep local)
+store-assets/
+screenshots/
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.editorconfig
+
+# Temporary files
+*.tmp
+*.log
+
+# Node modules (if you add build tools later)
+node_modules/
+package-lock.json
+
+# Archives
+*.zip
+*.rar
+*.7z

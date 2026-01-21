@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Automated Screenshot Generator - IP Guard</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      background: #2c3e50;
+      color: white;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    canvas {
+      border: 2px solid #3498db;
+      margin: 20px 0;
+      display: block;
+      background: white;
+    }
+    .controls {
+      text-align: center;
+      margin: 30px 0;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    .screenshot-item {
+      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 10px;
+    }
+    .screenshot-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #3498db;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📸 Automated Screenshot Generator - IP Guard</h1>
+    
+    <div class="controls">
+      <button onclick="generateAll()">🎨 Generate All 5 Screenshots</button>
+      <button onclick="downloadAll()">💾 Download All Screenshots</button>
+    </div>
+
+    <div id="screenshots"></div>
+  </div>
+
+  <script>
+    const screenshots = [];
+
+    function drawPopup(ctx, width, height, config) {
+      // Scale for high-res
+      const scale = 2;
+      const popupWidth = 400;
+      const popupHeight = 600;
+      const x = (width - popupWidth) / 2;
+      const y = (height - popupHeight) / 2;
+
+      // Background
+      ctx.fillStyle = '#f5f5f5';
+      ctx.fillRect(0, 0, width, height);
+
+      // Popup container
+      ctx.fillStyle = 'white';
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.shadowBlur = 20;
+      ctx.shadowOffsetY = 10;
+      ctx.fillRect(x, y, popupWidth, popupHeight);
+      ctx.shadowColor = 'transparent';
+
+      // Header
+      const gradient = ctx.createLinearGradient(x, y, x + popupWidth, y + 80);
+      gradient.addColorStop(0, '#667eea');
+      gradient.addColorStop(1, '#764ba2');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, popupWidth, 80);
+
+      // Title
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, "Segoe UI"';
+      ctx.textAlign = 'center';
+      ctx.fillText('🛡️ IP Guard', x + popupWidth/2, y + 50);
+
+      // Status section
+      let currentY = y + 110;
+      
+      // Status indicator
+      const statusColors = {
+        success: '#27ae60',
+        error: '#e74c3c',
+        warning: '#f39c12'
+      };
+      
+      ctx.fillStyle = statusColors[config.status] || '#95a5a6';
+      ctx.font = 'bold 24px -apple-system';
+      ctx.textAlign = 'center';
+      
+      const statusIcons = {
+        success: '✓',
+        error: '✗',
+        warning: '⚠'
+      };
+      
+      ctx.fillText(statusIcons[config.status] + ' ' + config.statusText, x + popupWidth/2, currentY);
+      
+      currentY += 40;
+      
+      // Current IP
+      ctx.fillStyle = '#34495e';
+      ctx.font = '18px "Courier New", monospace';
+      ctx.fillText(config.currentIp, x + popupWidth/2, currentY);
+      
+      currentY += 40;
+      
+      // Status message
+      ctx.fillStyle = '#7f8c8d';
+      ctx.font = '14px -apple-system';
+      const lines = config.message.split('\n');
+      lines.forEach(line => {
+        ctx.fillText(line, x + popupWidth/2, currentY);
+        currentY += 22;
+      });
+
+      currentY += 30;
+
+      // Configuration section
+      ctx.fillStyle = '#2c3e50';
+      ctx.font = 'bold 16px -apple-system';
+      ctx.textAlign = 'left';
+      ctx.fillText('Target IP Configuration', x + 20, currentY);
+      
+      currentY += 30;
+
+      // Input boxes
+      function drawInput(label, value, yPos) {
+        ctx.fillStyle = '#555';
+        ctx.font = '13px -apple-system';
+        ctx.fillText(label, x + 20, yPos);
+        
+        // Input field
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 20, yPos + 5, popupWidth - 40, 40);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(x + 20, yPos + 5, popupWidth - 40, 40);
+        
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = '14px "Courier New", monospace';
+        ctx.fillText(value, x + 30, yPos + 30);
+        
+        // Hint
+        ctx.fillStyle = '#95a5a6';
+        ctx.font = '11px -apple-system';
+        ctx.fillText(config.hints[label] || '', x + 20, yPos + 55);
+        
+        return yPos + 75;
+      }
+
+      if (config.showInputs) {
+        currentY = drawInput('Target IPv4 Address(es):', config.ipv4Input, currentY);
+        currentY = drawInput('Target IPv6 Address(es):', config.ipv6Input, currentY);
+      }
+
+      // Buttons
+      if (config.showButtons) {
+        currentY += 10;
+        
+        // Save button
+        const btnGradient = ctx.createLinearGradient(x + 20, currentY, x + popupWidth - 20, currentY + 45);
+        btnGradient.addColorStop(0, '#667eea');
+        btnGradient.addColorStop(1, '#764ba2');
+        ctx.fillStyle = btnGradient;
+        ctx.fillRect(x + 20, currentY, popupWidth - 40, 45);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 16px -apple-system';
+        ctx.textAlign = 'center';
+        ctx.fillText('Save Target IPs', x + popupWidth/2, currentY + 28);
+        
+        currentY += 55;
+        
+        // Check Now button
+        ctx.fillStyle = '#ecf0f1';
+        ctx.fillRect(x + 20, currentY, popupWidth - 40, 45);
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillText('Check Now', x + popupWidth/2, currentY + 28);
+      }
+
+      // Advanced Settings if shown
+      if (config.showAdvanced) {
+        currentY += 70;
+        ctx.fillStyle = '#7f8c8d';
+        ctx.font = 'bold 13px -apple-system';
+        ctx.textAlign = 'left';
+        ctx.fillText('▼ Advanced Settings', x + 20, currentY);
+        
+        currentY += 25;
+        
+        // API Selector
+        ctx.fillStyle = '#555';
+        ctx.font = '13px -apple-system';
+        ctx.fillText('IP Detection API:', x + 30, currentY);
+        
+        currentY += 20;
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 2;
+        ctx.fillRect(x + 30, currentY, popupWidth - 60, 35);
+        ctx.strokeRect(x + 30, currentY, popupWidth - 60, 35);
+        
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = '13px -apple-system';
+        ctx.fillText(config.apiChoice || 'Cloudflare (1.1.1.1, China-accessible)', x + 40, currentY + 22);
+      }
+    }
+
+    function generateScreenshot(id, title, config) {
+      const width = 1280;
+      const height = 800;
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.id = id;
+      
+      const ctx = canvas.getContext('2d');
+      drawPopup(ctx, width, height, config);
+      
+      screenshots.push({ canvas, filename: `screenshot-${id}.png`, title });
+      
+      const div = document.createElement('div');
+      div.className = 'screenshot-item';
+      div.innerHTML = `<div class="screenshot-title">${title}</div>`;
+      div.appendChild(canvas);
+      
+      const btn = document.createElement('button');
+      btn.textContent = `Download ${title}`;
+      btn.onclick = () => downloadScreenshot(canvas, `screenshot-${id}.png`);
+      div.appendChild(btn);
+      
+      return div;
+    }
+
+    function generateAll() {
+      const container = document.getElementById('screenshots');
+      container.innerHTML = '';
+
+      // Screenshot 1: Success State
+      container.appendChild(generateScreenshot('1-success', 'Screenshot 1: Success State', {
+        status: 'success',
+        statusText: 'IP Address Match',
+        currentIp: 'IPv4: 70.47.26.184',
+        message: 'Perfect! IPv4 ✓, No IPv6 ✓',
+        showInputs: true,
+        showButtons: true,
+        showAdvanced: false,
+        ipv4Input: '70.47.26.184',
+        ipv6Input: '',
+        hints: {
+          'Target IPv4 Address(es):': 'Multiple IPs: separate with commas',
+          'Target IPv6 Address(es):': 'Empty = verify NO IPv6 exists'
+        }
+      }));
+
+      // Screenshot 2: DNS Leak Warning
+      container.appendChild(generateScreenshot('2-dns-leak', 'Screenshot 2: DNS Leak Warning', {
+        status: 'warning',
+        statusText: 'PARTIAL MATCH',
+        currentIp: 'IPv4: 70.47.26.184 | IPv6: 2001:db8::99',
+        message: '⚠ IP LEAK DETECTED!\nIPv6 LEAK: 2001:db8::99 detected',
+        showInputs: true,
+        showButtons: true,
+        showAdvanced: false,
+        ipv4Input: '70.47.26.184',
+        ipv6Input: '',
+        hints: {
+          'Target IPv4 Address(es):': 'Multiple IPs: separate with commas',
+          'Target IPv6 Address(es):': 'Empty = verify NO IPv6 exists'
+        }
+      }));
+
+      // Screenshot 3: CIDR Support
+      container.appendChild(generateScreenshot('3-cidr', 'Screenshot 3: CIDR & Advanced Settings', {
+        status: 'success',
+        statusText: 'IP Address Match',
+        currentIp: 'IPv4: 70.47.26.184',
+        message: 'Perfect! IPv4 ✓ (70.47.26.184)',
+        showInputs: true,
+        showButtons: true,
+        showAdvanced: true,
+        ipv4Input: '70.47.26.0/24',
+        ipv6Input: '',
+        apiChoice: 'Cloudflare (1.1.1.1, China-accessible)',
+        hints: {
+          'Target IPv4 Address(es):': 'Supports: CIDR (10.0.0.0/24), range (70.47.26.183-185)',
+          'Target IPv6 Address(es):': 'Supports: CIDR (2001:db8::/64) or list'
+        }
+      }));
+
+      // Screenshot 4: Multiple IPs
+      container.appendChild(generateScreenshot('4-multiple', 'Screenshot 4: Multiple IP Configuration', {
+        status: 'success',
+        statusText: 'IP Address Match',
+        currentIp: 'IPv4: 70.47.26.184',
+        message: 'Perfect! IPv4 ✓ (70.47.26.184)',
+        showInputs: true,
+        showButtons: true,
+        showAdvanced: false,
+        ipv4Input: '70.47.26.183, 70.47.26.184, 70.47.26.185',
+        ipv6Input: '',
+        hints: {
+          'Target IPv4 Address(es):': 'Multiple IPs: separate with commas',
+          'Target IPv6 Address(es):': 'Empty = verify NO IPv6 exists'
+        }
+      }));
+
+      // Screenshot 5: API Options
+      container.appendChild(generateScreenshot('5-apis', 'Screenshot 5: Multiple API Options', {
+        status: 'success',
+        statusText: 'IP Address Match',
+        currentIp: 'IPv4: 70.47.26.184',
+        message: 'Perfect! IPv4 ✓',
+        showInputs: true,
+        showButtons: false,
+        showAdvanced: true,
+        ipv4Input: '70.47.26.184',
+        ipv6Input: '',
+        apiChoice: 'Cloudflare (1.1.1.1) ⭐ China-accessible',
+        hints: {
+          'Target IPv4 Address(es):': 'Supports: CIDR, range, or list',
+          'Target IPv6 Address(es):': 'Empty = verify NO IPv6 exists'
+        }
+      }));
+
+      alert('✅ All 5 screenshots generated! Click "Download All Screenshots" or download individually.');
+    }
+
+    function downloadScreenshot(canvas, filename) {
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function downloadAll() {
+      if (screenshots.length === 0) {
+        alert('Please generate screenshots first!');
+        return;
+      }
+
+      screenshots.forEach((item, index) => {
+        setTimeout(() => {
+          downloadScreenshot(item.canvas, item.filename);
+        }, index * 500);
+      });
+
+      alert(`📥 Downloading ${screenshots.length} screenshots...`);
+    }
+
+    // Auto-generate on load
+    window.onload = generateAll;
+  </script>
+</body>
+</html>
