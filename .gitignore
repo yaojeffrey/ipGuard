@@ -7,16 +7,23 @@ verify-*.html
 quick-*.html
 generate-*.html
 screenshot-helper.html
+auto-screenshot-generator.html
+mockup-generator.html
 
 # Publishing documentation (not needed in repo)
 STORE_LISTING.md
 PUBLISHING_CHECKLIST.md
 SCREENSHOT_GUIDE.md
 GITHUB_SETUP.md
+FINAL_CHECKLIST.md
+READY_TO_PUBLISH.md
 
-# Store assets (keep local)
+# Store assets and packages (keep local)
 store-assets/
+store-assets-for-upload/
 screenshots/
+ip-guard-package/
+ip-guard-extension-*.zip
 
 # System files
 .DS_Store
