@@ -3,6 +3,17 @@ chrome.runtime.onInstalled.addListener(async () => {
   const minutes = checkInterval || 2;
   chrome.alarms.create('checkIP', { periodInMinutes: minutes });
   chrome.action.setBadgeText({ text: '' });
+  // Perform immediate check on install
+  await performIPCheck();
+});
+
+// Recreate alarm and check on browser startup
+chrome.runtime.onStartup.addListener(async () => {
+  const { checkInterval } = await chrome.storage.local.get(['checkInterval']);
+  const minutes = checkInterval || 2;
+  chrome.alarms.create('checkIP', { periodInMinutes: minutes });
+  // Perform immediate check on startup
+  await performIPCheck();
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -224,13 +235,13 @@ async function performIPCheck() {
     let currentIpv6 = null;
 
     try {
-      currentIpv4 = await getIPv4_background(apiChoice || 'ipify');
+      currentIpv4 = await getIPv4(apiChoice || 'ipify');
     } catch (e) {
       // IPv4 check failed
     }
 
     try {
-      const ipv6 = await getIPv6_background();
+      const ipv6 = await getIPv6();
       if (ipv6) {
         currentIpv6 = normalizeIPv6(ipv6);
       }
