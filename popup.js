@@ -8,7 +8,7 @@ const targetIpv6Input = document.getElementById('targetIpv6Input');
 const apiSelect = document.getElementById('apiSelect');
 const checkInterval = document.getElementById('checkInterval');
 const notificationsToggle = document.getElementById('notificationsToggle');
-const saveButton = document.getElementById('saveButton');
+// saveButton removed - Target IPs now auto-save on blur
 const checkButton = document.getElementById('checkButton');
 const lastCheckElement = document.getElementById('lastCheck');
 const historyList = document.getElementById('historyList');
@@ -58,7 +58,7 @@ async function sendStatusChangeNotification(newStatus, currentIpv4, currentIpv6,
   });
 }
 
-async function getIPv4(apiChoice = 'ipify') {
+async function getIPv4(apiChoice = 'ipinfo') {
   const apis = {
     ipify: {
       url: 'https://api.ipify.org?format=json',
@@ -93,7 +93,7 @@ async function getIPv4(apiChoice = 'ipify') {
     }
   };
   
-  const api = apis[apiChoice] || apis.ipify;
+  const api = apis[apiChoice] || apis.ipinfo;
   
   try {
     const response = await fetch(api.url);
@@ -354,8 +354,8 @@ async function checkIPAddress() {
     }
 
     // Read updated data from storage
-    const { lastCheck, lastStatus, lastIpv4, lastIpv6, targetIpv4, targetIpv6, lastIpv4Isp, lastIpv4Country, lastIpv4City } =
-      await chrome.storage.local.get(['lastCheck', 'lastStatus', 'lastIpv4', 'lastIpv6', 'targetIpv4', 'targetIpv6', 'lastIpv4Isp', 'lastIpv4Country', 'lastIpv4City']);
+    const { lastCheck, lastStatus, lastIpv4, lastIpv6, targetIpv4, targetIpv6, lastIpv4Isp, lastIpv4Country, lastIpv4City, lastDNSServers, lastDNSLeakStatus } =
+      await chrome.storage.local.get(['lastCheck', 'lastStatus', 'lastIpv4', 'lastIpv6', 'targetIpv4', 'targetIpv6', 'lastIpv4Isp', 'lastIpv4Country', 'lastIpv4City', 'lastDNSServers', 'lastDNSLeakStatus']);
 
     // Build display message
     const ipDisplay = [];
@@ -382,8 +382,27 @@ async function checkIPAddress() {
     let message = '';
     if (lastStatus === 'success') {
       message = 'IP address matches target configuration';
+
+      // Add DNS status if available
+      if (lastDNSLeakStatus === false) {
+        message += ' • DNS secure';
+      }
     } else if (lastStatus === 'warning') {
-      message = 'IP leak detected - unwanted IP address present';
+      const warnings = [];
+      if (lastDNSLeakStatus === true) {
+        warnings.push('DNS leak detected');
+      }
+
+      // Show generic warning if no specific warnings
+      message = warnings.length > 0 ? warnings.join(' • ') : 'IP leak detected - unwanted IP address present';
+
+      // Show DNS servers if leak detected
+      if (lastDNSLeakStatus === true && lastDNSServers && lastDNSServers.length > 0) {
+        const dnsInfo = lastDNSServers.map(s =>
+          `${s.ip_address} (${s.city || 'Unknown'}, ${s.country || 'Unknown'})`
+        ).join(', ');
+        message += `\nDNS Servers: ${dnsInfo}`;
+      }
     } else if (lastStatus === 'error') {
       message = 'IP address does not match target';
     }
@@ -404,17 +423,16 @@ async function checkIPAddress() {
   }
 }
 
-saveButton.addEventListener('click', async () => {
+// Auto-save Target IPs function
+async function saveTargetIPs() {
   const ipv4InputValue = targetIpv4Input.value.trim();
   const ipv6InputValue = targetIpv6Input.value.trim();
-  const apiChoice = apiSelect.value;
-  const intervalMinutes = parseInt(checkInterval.value, 10);
-  
+
   // Parse inputs (supports CIDR, ranges, lists)
   // IMPORTANT: Allow empty to clear configuration
   const ipv4Spec = ipv4InputValue ? parseTargetIps(ipv4InputValue, false) : { type: 'none', value: null };
   const ipv6Spec = ipv6InputValue ? parseTargetIps(ipv6InputValue, true) : { type: 'none', value: null };
-  
+
   // Validate based on type (skip if empty/none)
   if (ipv4Spec.type === 'list' && ipv4Spec.value) {
     for (const ip of ipv4Spec.value) {
@@ -436,7 +454,7 @@ saveButton.addEventListener('click', async () => {
       return;
     }
   }
-  
+
   if (ipv6Spec.type === 'list' && ipv6Spec.value) {
     for (const ip of ipv6Spec.value) {
       if (!isValidIPv6(ip)) {
@@ -451,22 +469,13 @@ saveButton.addEventListener('click', async () => {
       return;
     }
   }
-  
-  // Save configuration
+
+  // Save only Target IPs (advanced settings auto-save separately)
   await chrome.storage.local.set({
     targetIpv4: ipv4Spec,
-    targetIpv6: ipv6Spec,
-    apiChoice: apiChoice,
-    checkInterval: intervalMinutes,
-    notificationsEnabled: notificationsToggle.checked
+    targetIpv6: ipv6Spec
   });
-  
-  // Update alarm with new interval
-  await chrome.runtime.sendMessage({ 
-    action: 'updateInterval', 
-    interval: intervalMinutes 
-  });
-  
+
   const configured = [];
   if (ipv4Spec.type !== 'none') {
     const typeLabel = { cidr: 'CIDR', range: 'Range', list: 'List' }[ipv4Spec.type] || 'IP';
@@ -476,22 +485,36 @@ saveButton.addEventListener('click', async () => {
     const typeLabel = { cidr: 'CIDR', list: 'List' }[ipv6Spec.type] || 'IP';
     configured.push(`IPv6 ${typeLabel}`);
   }
-  
+
   const mode = [];
   if (ipv4Spec.type === 'none') mode.push('Verify NO IPv4');
   if (ipv6Spec.type === 'none') mode.push('Verify NO IPv6');
-  
-  let message = '✓ Saved';
+
+  let message = '✓ Target IPs saved';
   if (configured.length > 0) {
     message += ': ' + configured.join(', ');
   }
   if (mode.length > 0) {
     message += ' | ' + mode.join(', ');
   }
-  message += ` | Check every ${intervalMinutes}min`;
-  
+
   showNotification(message, 'success');
   checkIPAddress();
+}
+
+// Auto-save on blur or Enter key
+targetIpv4Input.addEventListener('blur', saveTargetIPs);
+targetIpv4Input.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    saveTargetIPs();
+  }
+});
+
+targetIpv6Input.addEventListener('blur', saveTargetIPs);
+targetIpv6Input.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    saveTargetIPs();
+  }
 });
 
 async function loadAndDisplayHistory() {

@@ -269,6 +269,113 @@ async function getIPv6() {
   }
 }
 
+function generateUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function checkDNSLeak(dnsServers, currentCountry) {
+  if (!dnsServers || dnsServers.length === 0) {
+    return null; // Couldn't determine
+  }
+
+  // If no country data, we can't compare locations
+  if (!currentCountry) {
+    console.log('ℹ️ No IP location data available - DNS leak test inconclusive');
+    return null; // Can't determine without location data
+  }
+
+  // Known public DNS services (not leaks)
+  const publicDNS = [
+    '1.1.1.1', '1.0.0.1',           // Cloudflare
+    '8.8.8.8', '8.8.4.4',           // Google
+    '9.9.9.9',                       // Quad9
+    '208.67.222.222', '208.67.220.220' // OpenDNS
+  ];
+
+  // Check if any DNS server is in different country than IP
+  const leakingServers = dnsServers.filter(server => {
+    // Skip if it's a known public DNS
+    if (publicDNS.includes(server.ip_address)) {
+      return false;
+    }
+
+    // Check if country doesn't match (case insensitive)
+    // currentCountry could be "US" or "United States" depending on API
+    const serverCountry = server.country || '';
+    const normalizedCurrent = currentCountry?.toLowerCase() || '';
+    const normalizedServer = serverCountry.toLowerCase();
+
+    // Check both country code and full name
+    return normalizedCurrent && normalizedServer &&
+           !normalizedCurrent.includes(normalizedServer) &&
+           !normalizedServer.includes(normalizedCurrent);
+  });
+
+  return leakingServers.length > 0;
+}
+
+async function performDNSLeakTest(currentCountry) {
+  try {
+    // Generate 5 unique test IDs
+    const testIDs = Array.from({ length: 5 }, () => generateUUID());
+
+    // Step 1: Register test IDs
+    console.log('🔍 Registering DNS test IDs...');
+    await fetch('https://www.dnsleaktest.com/api/v1/identifiers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'User-Agent': 'IPGuard/1.4.0'
+      },
+      body: JSON.stringify({ identifiers: testIDs })
+    });
+
+    // Step 2: Trigger DNS queries by fetching unique subdomains
+    console.log('🔍 Triggering DNS queries...');
+    await Promise.all(
+      testIDs.map(id =>
+        fetch(`https://${id}.test.dnsleaktest.com/`, {
+          method: 'HEAD',
+          cache: 'no-store'
+        }).catch(() => {}) // Ignore errors, we just need DNS resolution
+      )
+    );
+
+    // Wait 2 seconds for DNS propagation
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Step 3: Get results
+    console.log('🔍 Retrieving DNS test results...');
+    const resultsResponse = await fetch('https://www.dnsleaktest.com/api/v1/servers-for-result', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        'User-Agent': 'IPGuard/1.4.0'
+      },
+      body: JSON.stringify({ queries: testIDs })
+    });
+
+    if (!resultsResponse.ok) {
+      throw new Error(`DNS leak test failed with status: ${resultsResponse.status}`);
+    }
+
+    const dnsServers = await resultsResponse.json();
+
+    // Step 4: Analyze for leaks
+    const isDNSLeak = checkDNSLeak(dnsServers, currentCountry);
+
+    return { isDNSLeak, dnsServers };
+
+  } catch (error) {
+    console.error('❌ DNS leak test error:', error);
+    return { isDNSLeak: null, dnsServers: [] }; // null = couldn't test
+  }
+}
+
 async function performIPCheck() {
   try {
     const { targetIpv4, targetIpv6, apiChoice, lastStatus, lastIpv4, lastIpv6 } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice', 'lastStatus', 'lastIpv4', 'lastIpv6']);
@@ -280,7 +387,7 @@ async function performIPCheck() {
     let ipv4City = null;
 
     try {
-      const ipv4Data = await getIPv4(apiChoice || 'ipify');
+      const ipv4Data = await getIPv4(apiChoice || 'ipinfo');
       currentIpv4 = ipv4Data.ip;
       ipv4Isp = ipv4Data.isp;
       ipv4Country = ipv4Data.country;
@@ -323,7 +430,28 @@ async function performIPCheck() {
         issues.push('ipv6-leak');
       }
     }
-    
+
+    // DNS Leak Check - Only run on IP change or first run
+    const ipChanged = (lastIpv4 && lastIpv4 !== currentIpv4) ||
+                      (lastIpv6 && lastIpv6 !== currentIpv6);
+    const isFirstRun = !lastIpv4 && !lastIpv6;
+
+    let dnsLeakResult = { isDNSLeak: null, dnsServers: [] };
+
+    if (isFirstRun || ipChanged) {
+      console.log('🔍 IP changed or first run, performing DNS leak test...');
+      dnsLeakResult = await performDNSLeakTest(ipv4Country);
+
+      if (dnsLeakResult.isDNSLeak === true) {
+        issues.push('dns-leak');
+        console.warn('⚠️ DNS leak detected!', dnsLeakResult.dnsServers);
+      } else if (dnsLeakResult.isDNSLeak === false) {
+        console.log('✅ No DNS leak detected');
+      } else {
+        console.log('ℹ️ DNS leak test inconclusive');
+      }
+    }
+
     // Determine new status
     let newStatus;
     if (issues.length === 0) {
@@ -353,7 +481,9 @@ async function performIPCheck() {
       lastStatus: newStatus,
       lastIpv4Isp: ipv4Isp,
       lastIpv4Country: ipv4Country,
-      lastIpv4City: ipv4City
+      lastIpv4City: ipv4City,
+      lastDNSServers: dnsLeakResult.dnsServers,
+      lastDNSLeakStatus: dnsLeakResult.isDNSLeak
     });
 
     // Detect if anything changed from previous check

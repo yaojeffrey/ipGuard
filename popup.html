@@ -50,23 +50,22 @@
         >
         <small class="hint">Supports: CIDR (2001:db8::/64) or list (IP1, IP2). Empty = verify NO IPv6</small>
       </div>
-      <button id="saveButton" class="btn-primary">Save Target IPs</button>
-      <button id="checkButton" class="btn-secondary">Check Now</button>
+      <button id="checkButton" class="btn-primary">Check Now</button>
       
       <details class="advanced-settings">
         <summary>Advanced Settings</summary>
         <div class="input-group">
           <label for="apiSelect">IP Detection API:</label>
           <select id="apiSelect">
-            <option value="ipify">ipify.org (Default, Fast)</option>
+            <option value="ipinfo">ipinfo.io (Default, ISP+Location, 50k/mo)</option>
+            <option value="ipapi">ipapi.co (ISP+Location, 1k/day)</option>
+            <option value="ipify">ipify.org (Fast, No geo data)</option>
             <option value="cloudflare">Cloudflare (1.1.1.1, China-accessible)</option>
             <option value="amazonaws">AWS CheckIP (Reliable)</option>
-            <option value="ipinfo">ipinfo.io (Alternative)</option>
-            <option value="ipapi">ipapi.co (Alternative)</option>
             <option value="icanhazip">icanhazip.com (Alternative)</option>
             <option value="myip">api.my-ip.io (Alternative)</option>
           </select>
-          <small class="hint">Try Cloudflare or AWS if blocked in your region</small>
+          <small class="hint">ipinfo/ipapi provide ISP & location data for DNS leak detection. Use others if blocked.</small>
         </div>
         <div class="input-group">
           <label for="checkInterval">Auto-Check Interval:</label>

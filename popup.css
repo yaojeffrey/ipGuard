@@ -90,8 +90,8 @@ body {
 }
 
 .enhanced-info {
-  font-size: 11px;
-  color: #95a5a6;
+  font-size: 12px;
+  color: #7f8c8d;
   margin: 6px 0;
   text-align: center;
   line-height: 1.4;
@@ -437,5 +437,232 @@ button {
   }
   50% {
     transform: scale(1.05);
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #1a1a1a;
+    color: #e0e0e0;
+  }
+
+  .container {
+    background: #2d2d2d;
+  }
+
+  .header {
+    border-bottom-color: #444;
+  }
+
+  .header h1 {
+    color: #e0e0e0;
+  }
+
+  .status-section {
+    background: #242424;
+  }
+
+  .current-ip {
+    color: #b8c5d0;
+  }
+
+  .enhanced-info {
+    color: #8a9ba8;
+  }
+
+  .status-message {
+    color: #9ca7b0;
+  }
+
+  .status-meta {
+    color: #7a8591;
+  }
+
+  .meta-separator {
+    color: #5a6570;
+  }
+
+  .save-notification.success {
+    background: #1e4d2b;
+    color: #81c995;
+    border-color: #2d6a3e;
+  }
+
+  .save-notification.error {
+    background: #4d1e1e;
+    color: #e08686;
+    border-color: #6a2d2d;
+  }
+
+  .config-section {
+    border-bottom-color: #444;
+  }
+
+  .config-section h3 {
+    color: #e0e0e0;
+  }
+
+  .input-group label {
+    color: #b8c5d0;
+  }
+
+  .input-group input {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+
+  .input-group input:focus {
+    border-color: #4a9eff;
+    background: #242424;
+  }
+
+  .hint {
+    color: #7a8591;
+  }
+
+  .btn-primary {
+    background: #4a9eff;
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #3a8eef;
+  }
+
+  .btn-secondary {
+    background: #3a3a3a;
+    color: #e0e0e0;
+  }
+
+  .btn-secondary:hover {
+    background: #4a4a4a;
+  }
+
+  .advanced-settings {
+    border-top-color: #444;
+  }
+
+  .advanced-settings summary {
+    color: #9ca7b0;
+  }
+
+  .advanced-settings summary:hover {
+    color: #4a9eff;
+  }
+
+  .advanced-settings select {
+    background: #1a1a1a;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+
+  .advanced-settings select:focus {
+    border-color: #4a9eff;
+    background: #242424;
+  }
+
+  /* Status colors - adjusted for dark mode visibility */
+  .status-indicator.success {
+    color: #51cf66;
+  }
+
+  .status-indicator.error {
+    color: #ff6b6b;
+  }
+
+  .status-indicator.warning {
+    color: #ffa94d;
+  }
+
+  .status-indicator.checking {
+    color: #4a9eff;
+  }
+
+  .spinner {
+    border-color: #444;
+    border-top-color: #4a9eff;
+  }
+
+  /* Connection History */
+  .connection-history {
+    border-top-color: #444;
+  }
+
+  .connection-history summary {
+    color: #9ca7b0;
+  }
+
+  .connection-history summary:hover {
+    color: #4a9eff;
+  }
+
+  .history-container {
+    background: #242424;
+  }
+
+  .history-header {
+    color: #b8c5d0;
+    border-bottom-color: #444;
+  }
+
+  .history-entry {
+    background: #1a1a1a;
+    border-left-color: inherit;
+  }
+
+  .history-entry.success {
+    border-left-color: #51cf66;
+  }
+
+  .history-entry.warning {
+    border-left-color: #ffa94d;
+  }
+
+  .history-entry.error {
+    border-left-color: #ff6b6b;
+  }
+
+  .entry-status.success {
+    background: #1e4d2b;
+    color: #81c995;
+  }
+
+  .entry-status.warning {
+    background: #4d3a1e;
+    color: #e0b976;
+  }
+
+  .entry-status.error {
+    background: #4d1e1e;
+    color: #e08686;
+  }
+
+  .change-reason {
+    color: #9ca7b0;
+  }
+
+  .empty-history {
+    color: #7a8591;
+  }
+
+  .btn-history {
+    background: #3a3a3a;
+    color: #e0e0e0;
+    border-color: #555;
+  }
+
+  .btn-history:hover {
+    background: #4a4a4a;
+  }
+
+  .btn-history.btn-confirm {
+    background: #c92a2a;
+    border-color: #a61e1e;
+  }
+
+  .btn-history.btn-confirm:hover {
+    background: #a61e1e;
   }
 }
