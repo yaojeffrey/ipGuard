@@ -22,13 +22,21 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-// Listen for interval updates from popup
+// Listen for interval updates and manual check requests from popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'updateInterval') {
     chrome.alarms.clear('checkIP', () => {
       chrome.alarms.create('checkIP', { periodInMinutes: request.interval });
     });
     sendResponse({ success: true });
+  } else if (request.action === 'checkIP') {
+    // Trigger IP check from popup
+    performIPCheck().then(() => {
+      sendResponse({ success: true });
+    }).catch((error) => {
+      sendResponse({ success: false, error: error.message });
+    });
+    return true; // Keep channel open for async response
   }
   return true;
 });
@@ -229,7 +237,7 @@ async function getIPv6() {
 
 async function performIPCheck() {
   try {
-    const { targetIpv4, targetIpv6, apiChoice, lastStatus } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice', 'lastStatus']);
+    const { targetIpv4, targetIpv6, apiChoice, lastStatus, lastIpv4, lastIpv6 } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice', 'lastStatus', 'lastIpv4', 'lastIpv6']);
 
     let currentIpv4 = null;
     let currentIpv6 = null;
@@ -303,7 +311,55 @@ async function performIPCheck() {
       lastIpv6: currentIpv6,
       lastStatus: newStatus
     });
-    
+
+    // Detect if anything changed from previous check
+    const statusChanged = lastStatus && lastStatus !== newStatus;
+    const ipv4Changed = lastIpv4 && lastIpv4 !== currentIpv4;
+    const ipv6Changed = lastIpv6 && lastIpv6 !== currentIpv6;
+    const somethingChanged = statusChanged || ipv4Changed || ipv6Changed;
+
+    // Get existing history to check if empty
+    const { ipCheckHistory } = await chrome.storage.local.get(['ipCheckHistory']);
+    const history = ipCheckHistory || [];
+    const historyIsEmpty = history.length === 0;
+
+    // Only log history if: status/IP changed, first run, or history is empty
+    if (!lastStatus || somethingChanged || historyIsEmpty) {
+      // Determine why we're logging this entry
+      let changeReason;
+      if (!lastStatus || historyIsEmpty) {
+        changeReason = 'initial';
+      } else if (statusChanged && (ipv4Changed || ipv6Changed)) {
+        changeReason = 'both';
+      } else if (statusChanged) {
+        changeReason = 'status';
+      } else {
+        changeReason = 'ip';
+      }
+
+      const historyEntry = {
+        timestamp: new Date().toISOString(),
+        displayTime: now,
+        ipv4: currentIpv4 || 'N/A',
+        ipv6: currentIpv6 || 'N/A',
+        status: newStatus,
+        hasChanged: ipv4Changed || ipv6Changed,
+        changeReason: changeReason
+      };
+
+      // Add new entry at beginning
+      history.unshift(historyEntry);
+
+      // Filter: keep only last 24 hours + max 100 entries
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const filtered = history
+        .filter(entry => new Date(entry.timestamp) > twentyFourHoursAgo)
+        .slice(0, 100);
+
+      // Save filtered history
+      await chrome.storage.local.set({ ipCheckHistory: filtered });
+    }
+
   } catch (error) {
     chrome.action.setBadgeText({ text: '!' });
     chrome.action.setBadgeBackgroundColor({ color: '#f39c12' });

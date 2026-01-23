@@ -19,6 +19,11 @@
       </div>
       <div id="currentIp" class="current-ip"></div>
       <div id="statusMessage" class="status-message"></div>
+      <div class="status-meta">
+        <span class="meta-item">Last check: <span id="lastCheck">Never</span></span>
+        <span class="meta-separator">•</span>
+        <span class="meta-item">Auto-check: <span id="autoCheckInterval">Every 2 minutes</span></span>
+      </div>
       <div id="saveNotification" class="save-notification"></div>
     </div>
 
@@ -83,17 +88,25 @@
           <small class="hint">Show notifications when IP status changes</small>
         </div>
       </details>
-    </div>
 
-    <div class="info-section">
-      <div class="info-row">
-        <span class="label">Last Check:</span>
-        <span id="lastCheck">Never</span>
-      </div>
-      <div class="info-row">
-        <span class="label">Auto-check:</span>
-        <span id="autoCheckInterval">Every 2 minutes</span>
-      </div>
+      <details class="connection-history">
+        <summary>Connection History (Last 24h)</summary>
+        <div class="history-container">
+          <div class="history-header">
+            <div class="header-col">Time</div>
+            <div class="header-col">Status</div>
+            <div class="header-col">IP Address</div>
+            <div class="header-col">Changed</div>
+          </div>
+          <div id="historyList" class="history-list">
+            <div class="empty-history">No history yet. IP checks will appear here.</div>
+          </div>
+          <div class="history-actions">
+            <button id="exportCsvButton" class="btn-history">Export CSV</button>
+            <button id="clearHistoryButton" class="btn-history">Clear History</button>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
   <script src="popup.js"></script>

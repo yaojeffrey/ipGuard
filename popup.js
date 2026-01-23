@@ -11,6 +11,9 @@ const notificationsToggle = document.getElementById('notificationsToggle');
 const saveButton = document.getElementById('saveButton');
 const checkButton = document.getElementById('checkButton');
 const lastCheckElement = document.getElementById('lastCheck');
+const historyList = document.getElementById('historyList');
+const exportCsvButton = document.getElementById('exportCsvButton');
+const clearHistoryButton = document.getElementById('clearHistoryButton');
 
 function showNotification(message, type = 'success') {
   saveNotification.textContent = message;
@@ -343,137 +346,46 @@ async function checkIPAddress() {
   updateStatus('checking', '', 'Fetching current IP addresses...');
 
   try {
-    const { targetIpv4, targetIpv6, apiChoice, lastStatus } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice', 'lastStatus']);
-    
-    // Fetch both IPv4 and IPv6 addresses
-    let currentIpv4 = null;
-    let currentIpv6 = null;
-    let ipv4Error = false;
-    let ipv6Error = false;
+    // Trigger IP check in background script (centralized logic)
+    const response = await chrome.runtime.sendMessage({ action: 'checkIP' });
 
-    // Check IPv4 using selected API
-    try {
-      currentIpv4 = await getIPv4(apiChoice || 'ipify');
-    } catch (e) {
-      ipv4Error = true;
+    if (!response || !response.success) {
+      throw new Error('IP check failed');
     }
 
-    // Check IPv6
-    try {
-      currentIpv6 = await getIPv6();
-      if (currentIpv6) {
-        currentIpv6 = normalizeIPv6(currentIpv6);
-      }
-    } catch (e) {
-      ipv6Error = true;
-    }
+    // Read updated data from storage
+    const { lastCheck, lastStatus, lastIpv4, lastIpv6, targetIpv4, targetIpv6 } =
+      await chrome.storage.local.get(['lastCheck', 'lastStatus', 'lastIpv4', 'lastIpv6', 'targetIpv4', 'targetIpv6']);
 
-    // Analyze results with NEW LOGIC:
-    // - If targetIpv4 is SET: currentIpv4 must MATCH it
-    // - If targetIpv4 is EMPTY: currentIpv4 must be NULL (no IPv4 should exist)
-    // - Same logic for IPv6
-    
+    // Build display message
     const ipDisplay = [];
-    if (currentIpv4) ipDisplay.push(`IPv4: ${currentIpv4}`);
-    if (currentIpv6) ipDisplay.push(`IPv6: ${currentIpv6}`);
-    
+    if (lastIpv4) ipDisplay.push(`IPv4: ${lastIpv4}`);
+    if (lastIpv6) ipDisplay.push(`IPv6: ${lastIpv6}`);
     const displayText = ipDisplay.length > 0 ? ipDisplay.join(' | ') : 'No IP detected';
-    
-    let status, message;
-    const issues = [];
-    const successes = [];
-    
-    // Check IPv4 using new matching logic
-    const ipv4Spec = targetIpv4 || { type: 'none', value: null };
-    if (ipv4Spec.type !== 'none') {
-      // IPv4 target is configured - must match
-      if (!currentIpv4) {
-        issues.push('IPv4 not detected');
-      } else if (!isIpMatch(currentIpv4, ipv4Spec, false)) {
-        const desc = ipv4Spec.type === 'cidr' ? ipv4Spec.value : 
-                     ipv4Spec.type === 'range' ? ipv4Spec.value :
-                     ipv4Spec.value.join(', ');
-        issues.push(`IPv4 mismatch: ${currentIpv4} not in ${desc}`);
-      } else {
-        successes.push(`IPv4 ✓ (${currentIpv4})`);
-      }
-    } else {
-      // IPv4 target is EMPTY - must NOT exist
-      if (currentIpv4) {
-        issues.push(`⚠ IPv4 LEAK: ${currentIpv4} detected (should be NONE)`);
-      } else {
-        successes.push('No IPv4 ✓');
-      }
-    }
-    
-    // Check IPv6 using new matching logic
-    const ipv6Spec = targetIpv6 || { type: 'none', value: null };
-    if (ipv6Spec.type !== 'none') {
-      // IPv6 target is configured - must match
-      if (!currentIpv6) {
-        issues.push('IPv6 not detected');
-      } else if (!isIpMatch(currentIpv6, ipv6Spec, true)) {
-        const desc = ipv6Spec.type === 'cidr' ? ipv6Spec.value : ipv6Spec.value.join(', ');
-        issues.push(`IPv6 mismatch: ${currentIpv6} not in ${desc}`);
-      } else {
-        successes.push(`IPv6 ✓ (${currentIpv6})`);
-      }
-    } else {
-      // IPv6 target is EMPTY - must NOT exist
-      if (currentIpv6) {
-        issues.push(`⚠ IPv6 LEAK: ${currentIpv6} detected (should be NONE)`);
-      } else {
-        successes.push('No IPv6 ✓');
-      }
-    }
-    
-    // Determine overall status
-    if (issues.length === 0) {
-      // Perfect - all checks passed
-      status = 'success';
-      message = `Perfect! ${successes.join(', ')}`;
-    } else if (issues.some(i => i.includes('LEAK'))) {
-      // IP leak detected (unwanted IP present)
-      status = 'warning';
-      message = `IP LEAK DETECTED!\n${issues.join('\n')}`;
-    } else {
-      // Mismatch or missing IP
-      status = 'error';
-      message = issues.join('\n');
-    }
-    
-    updateStatus(status, displayText, message);
 
-    // Update badge
-    if (status === 'success') {
-      chrome.action.setBadgeText({ text: '✓' });
-      chrome.action.setBadgeBackgroundColor({ color: '#27ae60' });
-    } else if (status === 'warning') {
-      chrome.action.setBadgeText({ text: '⚠' });
-      chrome.action.setBadgeBackgroundColor({ color: '#f39c12' });
-    } else {
-      chrome.action.setBadgeText({ text: '✗' });
-      chrome.action.setBadgeBackgroundColor({ color: '#e74c3c' });
+    // Determine message based on status
+    let message = '';
+    if (lastStatus === 'success') {
+      message = 'IP address matches target configuration';
+    } else if (lastStatus === 'warning') {
+      message = 'IP leak detected - unwanted IP address present';
+    } else if (lastStatus === 'error') {
+      message = 'IP address does not match target';
     }
 
-    // Check for status change and send notification
-    if (lastStatus && lastStatus !== status) {
-      await sendStatusChangeNotification(status, currentIpv4, currentIpv6, issues);
+    // Update UI display
+    updateStatus(lastStatus, displayText, message);
+
+    // Update last check time
+    if (lastCheck) {
+      lastCheckElement.textContent = lastCheck;
     }
 
-    const now = new Date().toLocaleTimeString();
-    lastCheckElement.textContent = now;
-    await chrome.storage.local.set({
-      lastCheck: now,
-      lastStatus: status,
-      lastIpv4: currentIpv4,
-      lastIpv6: currentIpv6
-    });
-    
+    // Refresh history display
+    await loadAndDisplayHistory();
+
   } catch (error) {
     updateStatus('error', '', `Network error: Unable to fetch IP addresses. Check your internet connection.`);
-    chrome.action.setBadgeText({ text: '!' });
-    chrome.action.setBadgeBackgroundColor({ color: '#f39c12' });
   }
 }
 
@@ -567,9 +479,120 @@ saveButton.addEventListener('click', async () => {
   checkIPAddress();
 });
 
+async function loadAndDisplayHistory() {
+  const { ipCheckHistory } = await chrome.storage.local.get(['ipCheckHistory']);
+  const history = ipCheckHistory || [];
+
+  if (history.length === 0) {
+    historyList.innerHTML = '<div class="empty-history">No history yet. IP checks will appear here.</div>';
+    return;
+  }
+
+  historyList.innerHTML = history.map(entry => {
+    const statusClass = entry.status;
+    const statusText = entry.status.charAt(0).toUpperCase() + entry.status.slice(1);
+    const ipDisplay = entry.ipv4 !== 'N/A' ? entry.ipv4 : (entry.ipv6 !== 'N/A' ? entry.ipv6 : 'N/A');
+
+    // Determine change reason display
+    let changeDisplay;
+    if (entry.changeReason === 'both') {
+      changeDisplay = 'Status + IP';
+    } else if (entry.changeReason === 'status') {
+      changeDisplay = 'Status';
+    } else if (entry.changeReason === 'ip') {
+      changeDisplay = 'IP';
+    } else {
+      changeDisplay = 'Initial';
+    }
+
+    return `
+      <div class="history-entry ${statusClass}">
+        <div class="entry-col">${entry.displayTime}</div>
+        <div class="entry-col"><span class="entry-status ${statusClass}">${statusText}</span></div>
+        <div class="entry-col entry-ip">${ipDisplay}</div>
+        <div class="entry-col change-reason">${changeDisplay}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function exportHistoryToCsv() {
+  const { ipCheckHistory } = await chrome.storage.local.get(['ipCheckHistory']);
+  const history = ipCheckHistory || [];
+
+  if (history.length === 0) {
+    showNotification('No history to export', 'error');
+    return;
+  }
+
+  // CSV header
+  let csv = 'Timestamp,Status,IPv4,IPv6,Changed\n';
+
+  // CSV rows
+  history.forEach(entry => {
+    const timestamp = new Date(entry.timestamp).toLocaleString();
+    let changedText;
+    if (entry.changeReason === 'both') {
+      changedText = 'Status + IP';
+    } else if (entry.changeReason === 'status') {
+      changedText = 'Status';
+    } else if (entry.changeReason === 'ip') {
+      changedText = 'IP';
+    } else {
+      changedText = 'Initial';
+    }
+    csv += `"${timestamp}","${entry.status}","${entry.ipv4}","${entry.ipv6}","${changedText}"\n`;
+  });
+
+  // Download file
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ip-guard-history-${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showNotification('History exported successfully!', 'success');
+}
+
+let clearHistoryConfirm = false;
+let clearHistoryTimeout = null;
+
+async function clearHistory() {
+  if (!clearHistoryConfirm) {
+    // First click: show confirmation state
+    clearHistoryConfirm = true;
+    clearHistoryButton.textContent = 'Click again to confirm';
+    clearHistoryButton.classList.add('btn-confirm');
+
+    // Reset after 3 seconds if no second click
+    clearHistoryTimeout = setTimeout(() => {
+      clearHistoryConfirm = false;
+      clearHistoryButton.textContent = 'Clear History';
+      clearHistoryButton.classList.remove('btn-confirm');
+    }, 3000);
+
+    return;
+  }
+
+  // Second click: actually clear
+  clearTimeout(clearHistoryTimeout);
+  clearHistoryConfirm = false;
+  clearHistoryButton.textContent = 'Clear History';
+  clearHistoryButton.classList.remove('btn-confirm');
+
+  await chrome.storage.local.set({ ipCheckHistory: [] });
+  await loadAndDisplayHistory();
+  showNotification('History cleared', 'success');
+}
+
 checkButton.addEventListener('click', () => {
   checkIPAddress();
 });
+
+exportCsvButton.addEventListener('click', exportHistoryToCsv);
+clearHistoryButton.addEventListener('click', clearHistory);
 
 (async function init() {
   const { targetIpv4, targetIpv6, apiChoice, checkInterval, lastCheck, notificationsEnabled } = await chrome.storage.local.get([
@@ -616,7 +639,10 @@ checkButton.addEventListener('click', () => {
   }
 
   checkIPAddress();
-  
+
+  // Load and display history
+  await loadAndDisplayHistory();
+
   if (lastCheck) {
     lastCheckElement.textContent = lastCheck;
   }
