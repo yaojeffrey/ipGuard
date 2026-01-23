@@ -149,78 +149,112 @@ async function getIPv4(apiChoice = 'ipify') {
   const apis = {
     ipify: {
       url: 'https://api.ipify.org?format=json',
-      parse: (data) => JSON.parse(data).ip
+      parse: (data) => {
+        const json = JSON.parse(data);
+        return { ip: json.ip, isp: null, country: null, city: null };
+      }
+    },
+    cloudflare: {
+      url: 'https://1.1.1.1/cdn-cgi/trace',
+      parse: (data) => {
+        const ip = data.split('\n').find(line => line.startsWith('ip=')).split('=')[1];
+        return { ip: ip, isp: null, country: null, city: null };
+      }
+    },
+    amazonaws: {
+      url: 'https://checkip.amazonaws.com',
+      parse: (data) => {
+        return { ip: data.trim(), isp: null, country: null, city: null };
+      }
+    },
+    ipinfo: {
+      url: 'https://ipinfo.io/json',
+      parse: (data) => {
+        const json = JSON.parse(data);
+        return {
+          ip: json.ip,
+          isp: json.org || null,
+          country: json.country || null,
+          city: json.city || null
+        };
+      }
+    },
+    ipapi: {
+      url: 'https://ipapi.co/json/',
+      parse: (data) => {
+        const json = JSON.parse(data);
+        return {
+          ip: json.ip,
+          isp: json.org || null,
+          country: json.country_name || null,
+          city: json.city || null
+        };
+      }
     },
     icanhazip: {
       url: 'https://icanhazip.com',
-      parse: (data) => data.trim()
+      parse: (data) => {
+        return { ip: data.trim(), isp: null, country: null, city: null };
+      }
     },
     myip: {
       url: 'https://api.my-ip.io/v2/ip.json',
-      parse: (data) => JSON.parse(data).ip
-    }
-  };
-  
-  const api = apis[apiChoice] || apis.ipify;
-  
-  try {
-    const response = await fetch(api.url);
-    if (!response.ok) throw new Error('API request failed');
-    const data = await response.text();
-    return api.parse(data);
-  } catch (e) {
-    if (apiChoice !== 'ipify') {
-      const fallback = await fetch('https://api.ipify.org?format=text');
-      if (fallback.ok) {
-        return (await fallback.text()).trim();
+      parse: (data) => {
+        const json = JSON.parse(data);
+        return { ip: json.ip, isp: null, country: null, city: null };
       }
     }
-    throw e;
-  }
-}
-
-async function getIPv6() {
-  try {
-    const response = await fetch('https://api64.ipify.org?format=json');
-    if (!response.ok) throw new Error('IPv6 API request failed');
-    const data = await response.json();
-    return isValidIPv6(data.ip) ? data.ip : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function getIPv4(apiChoice = 'ipify') {
-  const apis = {
-    ipify: {
-      url: 'https://api.ipify.org?format=json',
-      parse: (data) => JSON.parse(data).ip
-    },
-    icanhazip: {
-      url: 'https://icanhazip.com',
-      parse: (data) => data.trim()
-    },
-    myip: {
-      url: 'https://api.my-ip.io/v2/ip.json',
-      parse: (data) => JSON.parse(data).ip
-    }
   };
-  
-  const api = apis[apiChoice] || apis.ipify;
-  
+
+  // Smart fallback chain: try geo-enabled APIs first, then basic ones
+  const fallbackChain = ['ipinfo', 'ipapi', 'ipify'];
+
+  // Remove primary choice from fallback chain
+  const filteredFallbacks = fallbackChain.filter(name => name !== apiChoice);
+
+  // Try primary API first
+  const primaryApi = apis[apiChoice] || apis.ipify;
+
   try {
-    const response = await fetch(api.url);
-    if (!response.ok) throw new Error('API request failed');
+    console.log(`🌐 Trying primary API: ${apiChoice}`);
+    const response = await fetch(primaryApi.url);
+    if (!response.ok) {
+      console.warn(`⚠️ Primary API ${apiChoice} failed with status: ${response.status}`);
+      throw new Error(`API request failed: ${response.status}`);
+    }
     const data = await response.text();
-    return api.parse(data);
-  } catch (e) {
-    if (apiChoice !== 'ipify') {
-      const fallback = await fetch('https://api.ipify.org?format=text');
-      if (fallback.ok) {
-        return (await fallback.text()).trim();
+    const result = primaryApi.parse(data);
+    console.log(`✅ Primary API ${apiChoice} succeeded:`, result);
+    return result;
+  } catch (primaryError) {
+    console.error(`❌ Primary API ${apiChoice} error:`, primaryError.message);
+
+    // Try fallback chain
+    for (const fallbackName of filteredFallbacks) {
+      try {
+        console.log(`🔄 Trying fallback API: ${fallbackName}`);
+        const fallbackApi = apis[fallbackName];
+        const response = await fetch(fallbackApi.url);
+
+        if (!response.ok) {
+          console.warn(`⚠️ Fallback API ${fallbackName} failed with status: ${response.status}`);
+          continue; // Try next fallback
+        }
+
+        const data = await response.text();
+        const result = fallbackApi.parse(data);
+        console.log(`✅ Fallback API ${fallbackName} succeeded:`, result);
+        console.log(`ℹ️ Note: Using fallback ${fallbackName} instead of ${apiChoice}`);
+        return result;
+      } catch (fallbackError) {
+        console.error(`❌ Fallback API ${fallbackName} error:`, fallbackError.message);
+        continue; // Try next fallback
       }
     }
-    throw e;
+
+    // All APIs failed
+    console.error('❌ All API attempts failed');
+    throw new Error('All IP detection APIs failed');
   }
 }
 
@@ -241,9 +275,16 @@ async function performIPCheck() {
 
     let currentIpv4 = null;
     let currentIpv6 = null;
+    let ipv4Isp = null;
+    let ipv4Country = null;
+    let ipv4City = null;
 
     try {
-      currentIpv4 = await getIPv4(apiChoice || 'ipify');
+      const ipv4Data = await getIPv4(apiChoice || 'ipify');
+      currentIpv4 = ipv4Data.ip;
+      ipv4Isp = ipv4Data.isp;
+      ipv4Country = ipv4Data.country;
+      ipv4City = ipv4Data.city;
     } catch (e) {
       // IPv4 check failed
     }
@@ -309,7 +350,10 @@ async function performIPCheck() {
       lastCheck: now,
       lastIpv4: currentIpv4,
       lastIpv6: currentIpv6,
-      lastStatus: newStatus
+      lastStatus: newStatus,
+      lastIpv4Isp: ipv4Isp,
+      lastIpv4Country: ipv4Country,
+      lastIpv4City: ipv4City
     });
 
     // Detect if anything changed from previous check

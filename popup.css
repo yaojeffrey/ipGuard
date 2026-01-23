@@ -89,6 +89,18 @@ body {
   font-family: 'Courier New', monospace;
 }
 
+.enhanced-info {
+  font-size: 11px;
+  color: #95a5a6;
+  margin: 6px 0;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.enhanced-info:empty {
+  display: none;
+}
+
 .status-message {
   font-size: 13px;
   color: #7f8c8d;

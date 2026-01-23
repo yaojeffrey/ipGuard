@@ -354,14 +354,29 @@ async function checkIPAddress() {
     }
 
     // Read updated data from storage
-    const { lastCheck, lastStatus, lastIpv4, lastIpv6, targetIpv4, targetIpv6 } =
-      await chrome.storage.local.get(['lastCheck', 'lastStatus', 'lastIpv4', 'lastIpv6', 'targetIpv4', 'targetIpv6']);
+    const { lastCheck, lastStatus, lastIpv4, lastIpv6, targetIpv4, targetIpv6, lastIpv4Isp, lastIpv4Country, lastIpv4City } =
+      await chrome.storage.local.get(['lastCheck', 'lastStatus', 'lastIpv4', 'lastIpv6', 'targetIpv4', 'targetIpv6', 'lastIpv4Isp', 'lastIpv4Country', 'lastIpv4City']);
 
     // Build display message
     const ipDisplay = [];
     if (lastIpv4) ipDisplay.push(`IPv4: ${lastIpv4}`);
     if (lastIpv6) ipDisplay.push(`IPv6: ${lastIpv6}`);
     const displayText = ipDisplay.length > 0 ? ipDisplay.join(' | ') : 'No IP detected';
+
+    // Update enhanced info display (ISP and location)
+    const enhancedInfoElement = document.getElementById('enhancedInfo');
+    if (enhancedInfoElement) {
+      const parts = [];
+      if (lastIpv4Isp) parts.push(`🏢 ${lastIpv4Isp}`);
+      if (lastIpv4Country && lastIpv4City) {
+        parts.push(`📍 ${lastIpv4City}, ${lastIpv4Country}`);
+      } else if (lastIpv4Country) {
+        parts.push(`📍 ${lastIpv4Country}`);
+      } else if (lastIpv4City) {
+        parts.push(`📍 ${lastIpv4City}`);
+      }
+      enhancedInfoElement.textContent = parts.length > 0 ? parts.join(' • ') : '';
+    }
 
     // Determine message based on status
     let message = '';
@@ -593,6 +608,31 @@ checkButton.addEventListener('click', () => {
 
 exportCsvButton.addEventListener('click', exportHistoryToCsv);
 clearHistoryButton.addEventListener('click', clearHistory);
+
+// Auto-save advanced settings
+apiSelect.addEventListener('change', async () => {
+  const apiChoice = apiSelect.value;
+  await chrome.storage.local.set({ apiChoice: apiChoice });
+  showNotification('API updated. Checking IP now...', 'success');
+  await checkIPAddress();
+});
+
+checkInterval.addEventListener('change', async () => {
+  const intervalMinutes = parseInt(checkInterval.value, 10);
+  await chrome.storage.local.set({ checkInterval: intervalMinutes });
+  await chrome.runtime.sendMessage({
+    action: 'updateInterval',
+    interval: intervalMinutes
+  });
+  autoCheckIntervalElement.textContent = `Every ${intervalMinutes} minute${intervalMinutes > 1 ? 's' : ''}`;
+  showNotification(`Auto-check interval updated to ${intervalMinutes} minute${intervalMinutes > 1 ? 's' : ''}`, 'success');
+});
+
+notificationsToggle.addEventListener('change', async () => {
+  const enabled = notificationsToggle.checked;
+  await chrome.storage.local.set({ notificationsEnabled: enabled });
+  showNotification(`Notifications ${enabled ? 'enabled' : 'disabled'}`, 'success');
+});
 
 (async function init() {
   const { targetIpv4, targetIpv6, apiChoice, checkInterval, lastCheck, notificationsEnabled } = await chrome.storage.local.get([
