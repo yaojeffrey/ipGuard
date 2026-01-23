@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "IP Guard",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Monitor and verify your public IP address matches your target IP",
   "icons": {
     "16": "icons/icon16.png",
@@ -20,7 +20,8 @@
   },
   "permissions": [
     "storage",
-    "alarms"
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://api.ipify.org/*",

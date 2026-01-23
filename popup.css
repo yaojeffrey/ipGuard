@@ -247,3 +247,16 @@ button {
   outline: none;
   border-color: #3498db;
 }
+
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 500 !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto !important;
+  margin-right: 8px;
+  cursor: pointer;
+}

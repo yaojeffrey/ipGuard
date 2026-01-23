@@ -7,6 +7,7 @@ const targetIpv4Input = document.getElementById('targetIpv4Input');
 const targetIpv6Input = document.getElementById('targetIpv6Input');
 const apiSelect = document.getElementById('apiSelect');
 const checkInterval = document.getElementById('checkInterval');
+const notificationsToggle = document.getElementById('notificationsToggle');
 const saveButton = document.getElementById('saveButton');
 const checkButton = document.getElementById('checkButton');
 const lastCheckElement = document.getElementById('lastCheck');
@@ -17,6 +18,41 @@ function showNotification(message, type = 'success') {
   setTimeout(() => {
     saveNotification.classList.remove('show');
   }, 3000);
+}
+
+async function sendStatusChangeNotification(newStatus, currentIpv4, currentIpv6, issues) {
+  // Check if notifications are enabled
+  const { notificationsEnabled } = await chrome.storage.local.get(['notificationsEnabled']);
+  if (!notificationsEnabled) return;
+
+  let title, message, iconUrl;
+
+  if (newStatus === 'success') {
+    title = '✓ IP Guard - Status Recovered';
+    message = 'Your IP address now matches the target configuration.';
+    iconUrl = 'icons/icon128.png';
+  } else if (newStatus === 'warning') {
+    title = '⚠ IP Guard - Leak Detected';
+    message = issues.join('\n');
+    iconUrl = 'icons/icon128.png';
+  } else if (newStatus === 'error') {
+    title = '✗ IP Guard - IP Mismatch';
+    message = issues.join('\n');
+    iconUrl = 'icons/icon128.png';
+  } else {
+    return; // Don't notify for 'checking' status
+  }
+
+  if (currentIpv4) message += `\nIPv4: ${currentIpv4}`;
+  if (currentIpv6) message += `\nIPv6: ${currentIpv6}`;
+
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: iconUrl,
+    title: title,
+    message: message,
+    priority: 2
+  });
 }
 
 async function getIPv4(apiChoice = 'ipify') {
@@ -305,9 +341,9 @@ function updateStatus(status, ip, message) {
 
 async function checkIPAddress() {
   updateStatus('checking', '', 'Fetching current IP addresses...');
-  
+
   try {
-    const { targetIpv4, targetIpv6, apiChoice } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice']);
+    const { targetIpv4, targetIpv6, apiChoice, lastStatus } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice', 'lastStatus']);
     
     // Fetch both IPv4 and IPv6 addresses
     let currentIpv4 = null;
@@ -407,7 +443,7 @@ async function checkIPAddress() {
     }
     
     updateStatus(status, displayText, message);
-    
+
     // Update badge
     if (status === 'success') {
       chrome.action.setBadgeText({ text: '✓' });
@@ -419,10 +455,15 @@ async function checkIPAddress() {
       chrome.action.setBadgeText({ text: '✗' });
       chrome.action.setBadgeBackgroundColor({ color: '#e74c3c' });
     }
-    
+
+    // Check for status change and send notification
+    if (lastStatus && lastStatus !== status) {
+      await sendStatusChangeNotification(status, currentIpv4, currentIpv6, issues);
+    }
+
     const now = new Date().toLocaleTimeString();
     lastCheckElement.textContent = now;
-    await chrome.storage.local.set({ 
+    await chrome.storage.local.set({
       lastCheck: now,
       lastStatus: status,
       lastIpv4: currentIpv4,
@@ -485,11 +526,12 @@ saveButton.addEventListener('click', async () => {
   }
   
   // Save configuration
-  await chrome.storage.local.set({ 
+  await chrome.storage.local.set({
     targetIpv4: ipv4Spec,
     targetIpv6: ipv6Spec,
     apiChoice: apiChoice,
-    checkInterval: intervalMinutes
+    checkInterval: intervalMinutes,
+    notificationsEnabled: notificationsToggle.checked
   });
   
   // Update alarm with new interval
@@ -530,8 +572,8 @@ checkButton.addEventListener('click', () => {
 });
 
 (async function init() {
-  const { targetIpv4, targetIpv6, apiChoice, checkInterval, lastCheck } = await chrome.storage.local.get([
-    'targetIpv4', 'targetIpv6', 'apiChoice', 'checkInterval', 'lastCheck'
+  const { targetIpv4, targetIpv6, apiChoice, checkInterval, lastCheck, notificationsEnabled } = await chrome.storage.local.get([
+    'targetIpv4', 'targetIpv6', 'apiChoice', 'checkInterval', 'lastCheck', 'notificationsEnabled'
   ]);
   
   // Handle spec format
@@ -566,7 +608,13 @@ checkButton.addEventListener('click', () => {
   if (checkInterval) {
     checkInterval.value = checkInterval.toString();
   }
-  
+
+  if (notificationsEnabled !== undefined) {
+    notificationsToggle.checked = notificationsEnabled;
+  } else {
+    notificationsToggle.checked = true; // Default: enabled
+  }
+
   checkIPAddress();
   
   if (lastCheck) {

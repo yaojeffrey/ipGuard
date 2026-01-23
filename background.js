@@ -229,7 +229,7 @@ async function getIPv6() {
 
 async function performIPCheck() {
   try {
-    const { targetIpv4, targetIpv6, apiChoice } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice']);
+    const { targetIpv4, targetIpv6, apiChoice, lastStatus } = await chrome.storage.local.get(['targetIpv4', 'targetIpv6', 'apiChoice', 'lastStatus']);
 
     let currentIpv4 = null;
     let currentIpv6 = null;
@@ -275,23 +275,33 @@ async function performIPCheck() {
       }
     }
     
-    // Set badge
+    // Determine new status
+    let newStatus;
     if (issues.length === 0) {
+      newStatus = 'success';
       chrome.action.setBadgeText({ text: '✓' });
       chrome.action.setBadgeBackgroundColor({ color: '#27ae60' });
     } else if (issues.some(i => i.includes('leak'))) {
+      newStatus = 'warning';
       chrome.action.setBadgeText({ text: '⚠' });
       chrome.action.setBadgeBackgroundColor({ color: '#f39c12' });
     } else {
+      newStatus = 'error';
       chrome.action.setBadgeText({ text: '✗' });
       chrome.action.setBadgeBackgroundColor({ color: '#e74c3c' });
     }
-    
+
+    // Check for status change and send notification
+    if (lastStatus && lastStatus !== newStatus) {
+      await sendStatusChangeNotification(newStatus, currentIpv4, currentIpv6, issues);
+    }
+
     const now = new Date().toLocaleTimeString();
-    await chrome.storage.local.set({ 
-      lastCheck: now, 
+    await chrome.storage.local.set({
+      lastCheck: now,
       lastIpv4: currentIpv4,
-      lastIpv6: currentIpv6
+      lastIpv6: currentIpv6,
+      lastStatus: newStatus
     });
     
   } catch (error) {
@@ -300,6 +310,41 @@ async function performIPCheck() {
   }
 }
 
+
+async function sendStatusChangeNotification(newStatus, currentIpv4, currentIpv6, issues) {
+  // Check if notifications are enabled
+  const { notificationsEnabled } = await chrome.storage.local.get(['notificationsEnabled']);
+  if (!notificationsEnabled) return;
+
+  let title, message, iconUrl;
+
+  if (newStatus === 'success') {
+    title = '✓ IP Guard - Status Recovered';
+    message = 'Your IP address now matches the target configuration.';
+    iconUrl = 'icons/icon128.png';
+  } else if (newStatus === 'warning') {
+    title = '⚠ IP Guard - Leak Detected';
+    message = issues.join('\n');
+    iconUrl = 'icons/icon128.png';
+  } else if (newStatus === 'error') {
+    title = '✗ IP Guard - IP Mismatch';
+    message = issues.join('\n');
+    iconUrl = 'icons/icon128.png';
+  } else {
+    return; // Don't notify for 'checking' status
+  }
+
+  if (currentIpv4) message += `\nIPv4: ${currentIpv4}`;
+  if (currentIpv6) message += `\nIPv6: ${currentIpv6}`;
+
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: iconUrl,
+    title: title,
+    message: message,
+    priority: 2
+  });
+}
 
 chrome.action.onClicked.addListener(() => {
   performIPCheck();
